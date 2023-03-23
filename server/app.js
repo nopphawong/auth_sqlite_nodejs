@@ -2,11 +2,13 @@ require('dotenv').config()
 const express = require('express')
 const bodyParser = require('body-parser')
 const app = express()
+const cors = require('cors')
 const bcrypt = require('bcrypt')
 const saltRounds = 10
 const jwt = require('jsonwebtoken')
 const { verifyToken } = require('./verify-token')
 
+app.use(cors())
 app.use(bodyParser.json())
 const port = 3000
 
@@ -16,15 +18,15 @@ const db = new sqlite.Database('./users.db', sqlite.OPEN_READWRITE, (err) => {
 })
 
 app.post('/register', (req, res) => {
-  const { email, password } = req.body
+  const { name, email, password } = req.body
   bcrypt.hash(password, saltRounds, (err, hash) => {
     if (err) {
       res
         .status(500)
         .send({ success: false, message: 'Error hashing password' })
     } else {
-      const sql = 'INSERT INTO users (email, password) VALUES (?, ?)'
-      db.run(sql, [email, hash], (err) => {
+      const sql = 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)'
+      db.run(sql, [name, email, hash], (err) => {
         if (err) {
           res.status(500).send({
             success: false,
@@ -42,6 +44,7 @@ app.post('/register', (req, res) => {
 
 app.post('/login', (req, res) => {
   const { email, password } = req.body
+  console.log({ email, password })
   const sql = 'SELECT * FROM users WHERE email = ?'
   db.get(sql, [email], (err, user) => {
     if (err) {
@@ -63,7 +66,7 @@ app.post('/login', (req, res) => {
             .send({ success: false, message: 'Incorrect password' })
         } else {
           const token = jwt.sign(
-            { email: user.email, id: user.id },
+            { name: user.name, email: user.email, id: user.id },
             process.env.ACCESS_TOKEN_SECRET
           )
           res
@@ -76,7 +79,11 @@ app.post('/login', (req, res) => {
 })
 
 app.get('/protected', verifyToken, (req, res) => {
-  res.status(200).send({ success: true, message: `Welcome, ${req.user.email}` })
+  res.status(200).send({
+    success: true,
+    user: req.user,
+    message: `Welcome, ${req.user.name}`,
+  })
 })
 
 app.listen(port, () => {
