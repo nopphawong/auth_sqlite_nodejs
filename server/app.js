@@ -44,7 +44,6 @@ app.post('/register', (req, res) => {
 
 app.post('/login', (req, res) => {
   const { email, password } = req.body
-  console.log({ email, password })
   const sql = 'SELECT * FROM users WHERE email = ?'
   db.get(sql, [email], (err, user) => {
     if (err) {
